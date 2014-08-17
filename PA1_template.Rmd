@@ -2,19 +2,87 @@
 
 
 ## Loading and preprocessing the data
+```{r, cache=T}
+data <- read.csv("activity.csv")
+data$date <- data$date <- as.Date(as.character(data$date), "%Y-%m-%d") 
+```
 
+## Quick examination of the data
+```{r}
+summary(data)
+head(data,n=3)
+str(data)
+#all(colSums(is.na(data))==0)
+
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r}
+totalStepsPerDay <- with(data,aggregate(steps, list(date),sum, na.rm=T))
+totalSteps <- sum(totalStepsPerDay$x)
+noOfEntries <- length(totalStepsPerDay$x)
+meanNoOfStepsPerDay <- round(mean(totalStepsPerDay$x),2)
+medianNoOfStepsPerDay <- median(totalStepsPerDay$x)
+
+hist(totalStepsPerDay$x,col="aliceblue")
+abline(v = mean(totalStepsPerDay$x), col = "blue", lwd = 2)
+abline(v = median(totalStepsPerDay$x), col = "red", lwd = 2)
+
+legend("topright", legend = c(paste("Mean:",meanNoOfStepsPerDay),paste("Med:",medianNoOfStepsPerDay)),col=c("red","blue"), lwd=1)
+```
+
 
 
 
 ## What is the average daily activity pattern?
+```{r}
+avgNoOfStepsPerInterval <- with(data,aggregate(steps, list(interval),mean, na.rm=T, simplify = T))
+names(avgNoOfStepsPerInterval)[1] <- "interval"
+plot(unique(data$interval),avgNoOfStepsPerInterval$x, type = "l", col = "blue")
+indexOfMax <- which.max(avgNoOfStepsPerInterval$x)
+abline(h = avgNoOfStepsPerInterval[indexOfMax,2], col = "red", lwd = 1)
+text(1600,avgNoOfStepsPerInterval[indexOfMax,2]-30,paste0("Max averge\ndaily activity\nat interval ",avgNoOfStepsPerInterval[indexOfMax,1],":\n",round(avgNoOfStepsPerInterval[indexOfMax,2])," steps"))
+
+```
+
 
 
 
 ## Imputing missing values
+```{r}
+missingValuesPerColum <- colSums(is.na(data))
+missingValuesPerColum
+#totalNoOfMissingValuesPerColum==0
+data2 <- data
+avgs <- merge(data2[is.na(data2[,1]),],avgNoOfStepsPerInterval,by.x="interval",by.y="interval",all=T)[,4]
+data2[is.na(data2[,1]),1] <- avgs
+missingValuesPerColum2 <- colSums(is.na(data2))
+missingValuesPerColum2
+
+totalStepsPerDay2 <- with(data2,aggregate(steps, list(date),sum))
+totalSteps2 <- sum(totalStepsPerDay2$x)
+meanNoOfStepsPerDay2 <- round(mean(totalStepsPerDay2$x),2)
+medianNoOfStepsPerDay2 <- median(totalStepsPerDay2$x)
+
+hist(totalStepsPerDay2$x,col="aliceblue")
+abline(v = mean(totalStepsPerDay2$x), col = "blue", lwd = 2)
+abline(v = median(totalStepsPerDay2$x), col = "red", lwd = 2)
+
+legend("topright", legend = c(paste("Mean:",meanNoOfStepsPerDay2),paste("Med:",medianNoOfStepsPerDay2)),col=c("red","blue"), lwd=1)
+```
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+data2$isWeekend <- as.POSIXlt(data2$date, format="%Y-%m-%d")$wday %in% c(0, 6)
+data2$isWeekendFactor <- as.factor(ifelse(data2$isWeekend,"weekend", "weekday"))
+
+agg <- aggregate(steps ~ interval + isWeekendFactor, data = data2, mean)
+
+library(lattice)
+xyplot(steps ~ interval | isWeekendFactor, data = agg, layout = c(1,2), type="l")
+
+```
+
